@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agentspux.ai/schemas/mcp.v1.json",
+  "name": "filesystem-readonly",
+  "description": "Read-only access to a chosen project directory via MCP.",
+  "author": "rarnado",
+  "version": "1.0.0",
+  "transport": "stdio",
+  "command": "npx",
+  "args": [
+    "-y",
+    "@modelcontextprotocol/server-filesystem",
+    "${SPUX_MCP_FS_ROOT:-$HOME/projects}"
+  ],
+  "env": {
+    "MCP_READ_ONLY": "1"
+  },
+  "permissions": {
+    "filesystem": { "read": true, "write": false },
+    "network":    { "outbound": false },
+    "shell":      { "exec": false }
+  },
+  "ui": {
+    "icon": "📁",
+    "category": "filesystem",
+    "tags": ["files", "context", "read-only"]
+  }
+}
