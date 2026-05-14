@@ -1,85 +1,60 @@
-name: Deploy SPUX Dashboard to GitHub Pages
+name: Deploy SPUX Site to GitHub Pages
 
-# Builds the Next.js static export under /ui and publishes it via the
-# native GitHub Pages "Actions" source. Auto-detects whether this repo is:
+# The site is a single static `index.html` at the repo root, so this
+# workflow does almost nothing — it just packages the repo (minus the
+# Next.js dashboard and node_modules) and ships it to Pages.
 #
-#   • Org/User Pages   →  <name>.github.io     →  basePath = ""        →  https://<name>.github.io/
-#   • Project Pages    →  any other repo name  →  basePath = /<repo>   →  https://<owner>.github.io/<repo>/
-#
-# So the same workflow works whether you push to `agentspux/agentspux.github.io`
-# or `agentspux/spux-io` (or fork it under your own org).
+# No build step. No framework. No basePath gymnastics.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Permissions required for the Pages deployment action.
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Only one Pages deploy at a time; cancel stale in-flight runs.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Build static export
+    name: Stage static site
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ui
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ui/package-lock.json
-
-      - name: Detect Pages target & basePath
-        id: detect
+      - name: Stage publish directory
         shell: bash
         run: |
-          # GITHUB_REPOSITORY is "owner/repo"
-          OWNER="${GITHUB_REPOSITORY%%/*}"
-          REPO="${GITHUB_REPOSITORY##*/}"
-          OWNER_LC="${OWNER,,}"
-          REPO_LC="${REPO,,}"
+          set -euo pipefail
+          mkdir -p _site
 
-          if [[ "$REPO_LC" == "${OWNER_LC}.github.io" ]]; then
-            echo "Detected ORG/USER Pages → basePath empty"
-            BASE_PATH=""
-          else
-            echo "Detected PROJECT Pages → basePath /$REPO"
-            BASE_PATH="/$REPO"
-          fi
+          # Copy everything except VCS, build artifacts, and the optional
+          # Next.js dashboard (which is a separate, non-deployed surface).
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_site' \
+            --exclude 'node_modules' \
+            --exclude 'ui' \
+            --exclude '.DS_Store' \
+            ./ _site/
 
-          echo "base_path=$BASE_PATH" >> "$GITHUB_OUTPUT"
+          # Tell GitHub Pages NOT to run Jekyll on this content.
+          touch _site/.nojekyll
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build (Next.js static export)
-        env:
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.detect.outputs.base_path }}
-        run: |
-          echo "Building with NEXT_PUBLIC_BASE_PATH='${NEXT_PUBLIC_BASE_PATH}'"
-          npm run build
-
-      - name: Add .nojekyll (preserve _next/)
-        run: touch out/.nojekyll
+          echo "---- staged ----"
+          ls -la _site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ui/out
+          path: _site
 
   deploy:
     name: Deploy to GitHub Pages
