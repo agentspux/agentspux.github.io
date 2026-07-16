@@ -1,8 +1,8 @@
-name: Deploy SPUX Site to GitHub Pages
+name: Deploy AgentSpux Site to GitHub Pages
 
 # The site is a single static `index.html` at the repo root, so this
-# workflow does almost nothing — it just packages the repo (minus the
-# Next.js dashboard and node_modules) and ships it to Pages.
+# workflow does almost nothing — it just packages the repo and ships
+# it to Pages.
 #
 # No build step. No framework. No basePath gymnastics.
 
@@ -34,14 +34,11 @@ jobs:
           set -euo pipefail
           mkdir -p _site
 
-          # Copy everything except VCS, build artifacts, and the optional
-          # Next.js dashboard (which is a separate, non-deployed surface).
+          # Copy everything except VCS and build artifacts.
           rsync -a \
             --exclude '.git' \
             --exclude '.github' \
             --exclude '_site' \
-            --exclude 'node_modules' \
-            --exclude 'ui' \
             --exclude '.DS_Store' \
             ./ _site/
 
